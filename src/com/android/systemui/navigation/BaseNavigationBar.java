@@ -53,22 +53,17 @@ import android.graphics.Canvas;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.Message;
-import android.os.UserHandle;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Display;
-import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-
-import cyanogenmod.providers.CMSettings;
 
 public abstract class BaseNavigationBar extends LinearLayout implements Navigator, PulseObserver {
     final static String TAG = "PhoneStatusBar/BaseNavigationBar";
@@ -93,9 +88,7 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
     protected View mCurrentView = null;
     protected FrameLayout mRot0, mRot90;
     protected int mDisabledFlags = 0;
-    private int mLastRotation = Surface.ROTATION_0;
     protected int mNavigationIconHints = 0;
-    private boolean isOrientationListenerEnabled;
     protected boolean mVertical;
     protected boolean mScreenOn;
     protected boolean mLeftInLandscape;
@@ -103,7 +96,6 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
     protected boolean mWakeAndUnlocking;
     protected boolean mScreenPinningEnabled;
     protected OnVerticalChangedListener mOnVerticalChangedListener;
-    protected OrientationEventListener mOrientationEventListener;
     protected SmartObserver mSmartObserver;
     protected PulseController mPulse;
     protected PhoneStatusBar mBar;
@@ -161,21 +153,6 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
         mSmartObserver = new SmartObserver(mHandler, context.getContentResolver());
         mSpringSystem = SpringSystem.create();
         sIsTablet = !DUActionUtils.navigationBarCanMove();
-        mOrientationEventListener = new OrientationEventListener(mContext,
-                SensorManager.SENSOR_DELAY_NORMAL) {
-            @Override
-            public void onOrientationChanged(int orientation) {
-                int rotation = mDisplay.getRotation();
-                if (rotation != mLastRotation) {
-                    setLeftInLandscape(rotation == Surface.ROTATION_270);
-                }
-                mLastRotation = rotation;
-            }
-        };
-        if (mOrientationEventListener.canDetectOrientation()) {
-            mOrientationEventListener.enable();
-            isOrientationListenerEnabled = true;
-        }
     }
 
     // require implementation. Surely they have something to clean up
@@ -332,14 +309,6 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
             if (mPulse != null) {
                 mPulse.setKeyguardShowing(showing);
             }
-            if (mScreenOn && !mKeyguardShowing && !isOrientationListenerEnabled
-                    && mOrientationEventListener.canDetectOrientation()) {
-                mOrientationEventListener.enable();
-                isOrientationListenerEnabled = true;
-            } else if (isOrientationListenerEnabled) {
-                mOrientationEventListener.disable();
-                isOrientationListenerEnabled = false;
-            }
             onKeyguardShowing(showing);
         }
     }
@@ -362,8 +331,8 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
 
         // PhoneStatusBar doesn't set this when user inflates a bar, only when
         // actual value changes #common_cm
-        mLeftInLandscape = CMSettings.System.getIntForUser(resolver,
-                CMSettings.System.NAVBAR_LEFT_IN_LANDSCAPE, 0, UserHandle.USER_CURRENT) == 1;
+//        mLeftInLandscape = Settings.System.getIntForUser(resolver,
+//                Settings.System.NAVBAR_LEFT_IN_LANDSCAPE, 0, UserHandle.USER_CURRENT) == 1;
         // we boot with screen off, but we need to force it true here
         mScreenOn = true;
         if (mPulse != null) {
@@ -424,14 +393,6 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
         mScreenOn = screenOn;
         if (mPulse != null) {
             mPulse.notifyScreenOn(screenOn);
-        }
-        if (mScreenOn && !mKeyguardShowing && !isOrientationListenerEnabled
-                && mOrientationEventListener.canDetectOrientation()) {
-            mOrientationEventListener.enable();
-            isOrientationListenerEnabled = true;
-        } else if (isOrientationListenerEnabled) {
-            mOrientationEventListener.disable();
-            isOrientationListenerEnabled = false;
         }
         setDisabledFlags(mDisabledFlags, true);
     }
